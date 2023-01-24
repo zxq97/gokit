@@ -1,0 +1,7 @@
+syntax = "proto3";
+package rpc;
+
+message Service {
+  string name = 1;
+  string bind = 2;
+}

@@ -1,0 +1,8 @@
+syntax = "proto3";
+package grpcerr;
+
+message GrpcErr {
+  int32 code = 1;
+  string message = 2;
+  string detail = 3;
+}

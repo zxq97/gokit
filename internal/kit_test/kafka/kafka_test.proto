@@ -1,0 +1,7 @@
+syntax = "proto3";
+package kafka;
+
+message TestMsg {
+  string a = 1;
+  int64 b = 2;
+}
