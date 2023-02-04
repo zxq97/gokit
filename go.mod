@@ -40,8 +40,11 @@ require (
 	github.com/jcmturner/gofork v1.7.6 // indirect
 	github.com/jcmturner/gokrb5/v8 v8.4.3 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.15.15 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/longbridgeapp/sqlparser v0.3.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.26.0 // indirect
@@ -60,5 +63,9 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 	google.golang.org/genproto v0.0.0-20230119192704-9d59e20e5cd1 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
+	gorm.io/driver/mysql v1.4.5 // indirect
+	gorm.io/gorm v1.24.5 // indirect
+	gorm.io/plugin/dbresolver v1.4.1 // indirect
+	gorm.io/sharding v0.5.2 // indirect
 	upper.io/db.v3 v3.8.0+incompatible // indirect
 )
