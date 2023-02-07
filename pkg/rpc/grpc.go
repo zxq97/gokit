@@ -36,6 +36,7 @@ func NewGrpcConn(ctx context.Context, svcName string, client *clientv3.Client) (
 		grpc.WithUnaryInterceptor(
 			grpc_middleware.ChainUnaryClient(
 				timeout(time.Second),
+				outgoingTrace(),
 				unBizErr(),
 				grpc_prometheus.UnaryClientInterceptor,
 			)),

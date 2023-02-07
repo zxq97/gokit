@@ -15,7 +15,7 @@ func getRedisClient() (*XRedis, error) {
 		return nil, err
 	}
 	log.Println(conf.Addr, conf.DB)
-	return NewRedis(conf), nil
+	return NewXRedis(conf), nil
 }
 
 func TestNewRedis(t *testing.T) {
@@ -23,7 +23,7 @@ func TestNewRedis(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	val, err := client.HGet(context.TODO(), "k", "h").Result()
+	val, err := client.HSet(context.TODO(), "k", "h", "1").Result()
 	if err != nil {
 		t.Error(err)
 	}

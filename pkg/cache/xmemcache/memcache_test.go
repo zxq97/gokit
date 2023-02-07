@@ -14,7 +14,7 @@ func TestNewMemcache(t *testing.T) {
 		t.Error(err)
 	}
 	log.Println(conf.Addr)
-	client := NewMemcache(conf)
+	client := NewXMemcache(conf)
 	res, err := client.Get("k")
 	log.Println(res, err)
 }
