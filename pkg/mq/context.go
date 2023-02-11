@@ -1,4 +1,4 @@
-package kafka
+package mq
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/zxq97/gokit/pkg/constant"
 )
 
-func consumerContext(traceID string, d time.Duration) (ctx context.Context, cancel context.CancelFunc) {
+func ConsumerContext(traceID string, d time.Duration) (ctx context.Context, cancel context.CancelFunc) {
 	ctx = context.WithValue(context.Background(), constant.TraceIDKey, traceID)
 	if d.Seconds() != 0 {
 		ctx, cancel = context.WithTimeout(ctx, d)

@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package kafka;
+package mq;
 
-message KafkaMessage {
+message MqMessage {
   string tx_id = 1;
   string trace_id = 2;
-  int32 event_type = 3;
+  string tag = 3;
   bytes message = 4;
 }

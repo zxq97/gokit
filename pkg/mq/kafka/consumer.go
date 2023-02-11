@@ -1,56 +1,49 @@
 package kafka
 
 import (
-	"context"
 	"sync"
 	"time"
 
 	"github.com/Shopify/sarama"
 	"github.com/bsm/sarama-cluster"
 	"github.com/zxq97/gokit/pkg/concurrent"
+	"github.com/zxq97/gokit/pkg/mq"
 )
 
-type HandleFunc func(ctx context.Context, msg *KafkaMessage) error
+var _ mq.Consumer = (*Consumer)(nil)
 
 type Consumer struct {
-	name        string
-	consumer    *cluster.Consumer
-	fn          HandleFunc
-	ch          chan *sarama.ConsumerMessage
-	done        chan struct{}
-	NPoll       int
-	NProc       int
-	procTimeout time.Duration
+	*mq.ConsumerMeta
+	consumer *cluster.Consumer
+	ch       chan *sarama.ConsumerMessage
 }
 
-// NewConsumer
-// f need process Idempotent
-func NewConsumer(conf *Config, topics []string, group, name string, f HandleFunc, nPoll, nProc int, d time.Duration) (*Consumer, <-chan struct{}, error) {
+func NewConsumer(conf *Config, topics []string, group string, fn mq.HandleFunc, opts ...mq.Option) (mq.Consumer, error) {
 	config := cluster.NewConfig()
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
 	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategySticky
 	config.Consumer.Offsets.Initial = sarama.OffsetNewest
-	config.Consumer.Offsets.CommitInterval = 1 * time.Second
-	config.Group.Return.Notifications = true
+	config.Consumer.Offsets.CommitInterval = time.Second
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
 	consumer, err := cluster.NewConsumer(conf.Addr, group, topics, config)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	done := make(chan struct{})
+	meta := &mq.ConsumerMeta{Name: group, Fn: fn, NPoll: 1, NProc: 1, Done: make(chan struct{})}
+	for _, o := range opts {
+		o(meta)
+	}
 	return &Consumer{
-		name:        name,
-		consumer:    consumer,
-		fn:          f,
-		NPoll:       nPoll,
-		NProc:       nProc,
-		ch:          make(chan *sarama.ConsumerMessage, defaultHandlerQueueSize),
-		done:        done,
-		procTimeout: d,
-	}, done, nil
+		meta,
+		consumer,
+		make(chan *sarama.ConsumerMessage, mq.DefaultHandlerQueueSize),
+	}, nil
 }
 
-func (c *Consumer) Start() {
+func (c *Consumer) Start() error {
 	rwg := sync.WaitGroup{}
 	for i := 0; i < c.NPoll; i++ {
 		rwg.Add(1)
@@ -73,12 +66,17 @@ func (c *Consumer) Start() {
 	}
 	go func() {
 		pwg.Wait()
-		close(c.done)
+		close(c.Done)
 	}()
+	return nil
 }
 
 func (c *Consumer) Stop() error {
-	return c.consumer.Close()
+	if err := c.consumer.Close(); err != nil {
+		return err
+	}
+	<-c.Done
+	return c.consumer.CommitOffsets()
 }
 
 func (c *Consumer) readLoop() {
@@ -92,11 +90,11 @@ func (c *Consumer) readLoop() {
 			}
 		case err, ok := <-c.consumer.Errors():
 			if ok {
-				excLogger.Println("consumer read loop err", c.name, err)
+				mq.ExcLogger.Println("consumer read loop err", c.Name, err)
 			}
 		case ntf, ok := <-c.consumer.Notifications():
 			if ok {
-				apiLogger.Println("consumer read loop ntf", c.name, ntf)
+				mq.ExcLogger.Println("consumer read loop ntf", c.Name, ntf)
 			}
 		}
 	}
@@ -107,22 +105,22 @@ func (c *Consumer) procLoop() {
 		select {
 		case msg, ok := <-c.ch:
 			if ok {
-				kafkaMsg, err := unmarshal(msg.Value)
+				kafkaMsg, err := mq.Unmarshal(msg.Value)
 				if err != nil {
-					excLogger.Println("consumer proc loop unmarshal err", c.name, string(msg.Value), err)
+					mq.ExcLogger.Println("consumer proc loop unmarshal err", c.Name, string(msg.Value), err)
 					continue
 				}
-				ctx, cancel := consumerContext(kafkaMsg.TraceId, c.procTimeout)
+				ctx, cancel := mq.ConsumerContext(kafkaMsg.TraceId, c.ProcTimeout)
 				now := time.Now()
 				concurrent.F(func() {
-					err = c.fn(ctx, kafkaMsg)
+					err = c.Fn(ctx, kafkaMsg)
 					cancel()
 				})
 				if err != nil {
-					excLogger.Println("consumer proc loop fn err", c.name, kafkaMsg, err)
-					observeMsg(msg, c.name, "fail", err.Error(), now)
+					mq.ExcLogger.Println("consumer proc loop fn err", c.Name, kafkaMsg, err)
+					mq.ObserveMsg(msg.Topic, c.Name, "fail", err.Error(), now)
 				} else {
-					observeMsg(msg, c.name, "success", "", now)
+					mq.ObserveMsg(msg.Topic, c.Name, "success", "", now)
 				}
 				c.consumer.MarkOffset(msg, "")
 			} else {

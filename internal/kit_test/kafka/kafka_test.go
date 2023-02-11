@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/zxq97/gokit/pkg/config"
+	"github.com/zxq97/gokit/pkg/mq"
 	"github.com/zxq97/gokit/pkg/mq/kafka"
 )
 
@@ -36,7 +37,7 @@ func TestNewProducer(t *testing.T) {
 			msg := &TestMsg{A: "a", B: x}
 			log.Println(x)
 			x++
-			err = p.SendMessage(context.TODO(), "test_tt", "key", msg, kafka.EventTypeCreate)
+			err = p.SendMessage(context.TODO(), "test_tt", "key", mq.TagCreate, msg, 0)
 			if err != nil {
 				t.Error(err)
 			}
@@ -53,7 +54,7 @@ func TestNewConsumer(t *testing.T) {
 		t.Error(err)
 	}
 	log.Println(conf.Addr)
-	c, done, err := kafka.NewConsumer(conf, []string{"test_tt"}, "g", "test", func(ctx context.Context, msg *kafka.KafkaMessage) error {
+	fn := func(ctx context.Context, msg *mq.MqMessage) error {
 		km := &TestMsg{}
 		err = proto.Unmarshal(msg.Message, km)
 		if err != nil {
@@ -62,16 +63,16 @@ func TestNewConsumer(t *testing.T) {
 		log.Println(km)
 		<-time.After(time.Second)
 		return nil
-	}, 1, 1, time.Second)
-	if err != nil {
-		t.Error(err)
 	}
-	c.Start()
+	cg, err := kafka.NewConsumer(conf, []string{"test_tt"}, "g", fn, mq.WithName("g"), mq.WithNPoll(10), mq.WithNProc(10), mq.WithProcTimeout(time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = cg.Start()
 	time.AfterFunc(time.Second*3, func() {
-		if err = c.Stop(); err != nil {
+		if err = cg.Stop(); err != nil {
 			t.Error(err)
 		}
 	})
 	log.Println("wait done chan")
-	<-done
 }

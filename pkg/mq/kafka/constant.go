@@ -6,8 +6,6 @@ const (
 	defaultDialTimeout  = 500 * time.Millisecond
 	defaultReadTimeout  = 5 * time.Second
 	defaultWriteTimeout = 5 * time.Second
-
-	defaultHandlerQueueSize = 100
 )
 
 const (
@@ -20,12 +18,4 @@ const (
 	TopicRelationOperator     = "relation_operator"
 
 	TopicOpusOperator = "opus_operator"
-
-	EventTypeCreate        = 1
-	EventTypeReply         = 2
-	EventTypeListMissed    = 3
-	EventTypeSubListMissed = 4
-	EventTypeLike          = 5
-	EventTypeHate          = 6
-	EventTypeDelete        = 7
 )
