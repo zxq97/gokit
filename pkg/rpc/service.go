@@ -1,6 +1,10 @@
 package rpc
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/zxq97/gokit/internal/host"
+)
 
 type Config struct {
 	Name     string `yaml:"name"`
@@ -8,11 +12,12 @@ type Config struct {
 	HttpBind string `yaml:"http_bind"`
 }
 
-func GetSvc(conf *Config) *Service {
+func GetSvc(conf *Config) (*Service, error) {
+	ip, err := host.GetIP()
 	return &Service{
 		Name: conf.Name,
-		Bind: conf.Bind,
-	}
+		Bind: ip + conf.Bind,
+	}, err
 }
 
 func GetKey(svc *Service) string {

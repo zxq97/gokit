@@ -47,7 +47,11 @@ func NewGrpcConn(ctx context.Context, svcName string, client *clientv3.Client) (
 
 func NewGrpcServer(ctx context.Context, conf *Config, client *clientv3.Client) (*grpc.Server, error) {
 	r := newRegister(client)
-	err := r.Register(ctx, GetSvc(conf))
+	s, err := GetSvc(conf)
+	if err != nil {
+		return nil, err
+	}
+	err = r.Register(ctx, s)
 	if err != nil {
 		return nil, err
 	}
