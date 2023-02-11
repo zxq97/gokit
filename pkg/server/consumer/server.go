@@ -13,7 +13,7 @@ type Server struct {
 	consumers []mq.Consumer
 }
 
-func NewServer(cs []mq.Consumer, opts ...server.Option) (*Server, error) {
+func NewServer(cs []mq.Consumer, opts ...server.Option) (server.Server, error) {
 	meta := &server.ServiceMeta{}
 	for _, o := range opts {
 		o(meta)

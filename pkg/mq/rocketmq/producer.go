@@ -11,13 +11,11 @@ import (
 	"github.com/zxq97/gokit/pkg/mq"
 )
 
-var _ mq.Producer = (*Producer)(nil)
-
 type Producer struct {
 	producer rocketmq.Producer
 }
 
-func NewProducer(conf *Config, opts ...producer.Option) (mq.Producer, error) {
+func NewProducer(conf *Config, opts ...producer.Option) (*Producer, error) {
 	opts = append(opts,
 		producer.WithNameServer(conf.NsAddr),
 		producer.WithSendMsgTimeout(time.Second),
