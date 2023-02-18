@@ -6,6 +6,7 @@ const (
 	TagCreate        = "create"
 	TagReply         = "reply"
 	TagDelete        = "delete"
+	TagSync          = "sync"
 	TagListMissed    = "list_missed"
 	TagSubListMissed = "sub_list_missed"
 	TagLike          = "like"

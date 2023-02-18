@@ -15,6 +15,7 @@ const (
 
 	TopicRelationFollow       = "relation_follow"
 	TopicRelationCacheRebuild = "relation_cache_rebuild"
+	TopicRelationSyncCount    = "relation_sync_count"
 	TopicRelationOperator     = "relation_operator"
 
 	TopicOpusOperator = "opus_operator"
