@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	zRevRangeByMemberScript = redis.NewScript(`
+	zRevPageByMemberScript = redis.NewScript(`
         local rank = redis.call("ZRevRank", KEYS[1], ARGV[1])
         if not rank then
             rank = 0
@@ -19,10 +19,30 @@ var (
         return redis.call("ZRevRange", KEYS[1], rank, rank + ARGV[2])
     `)
 
-	zRevRangeByMemberWithScoresScript = redis.NewScript(`
+	zRevPageByMemberWithScoresScript = redis.NewScript(`
 		local rank = redis.call("ZRevRank", KEYS[1], ARGV[1])
 		if not rank then
 			rank = 0
+		else
+			rank = rank + 1
+		end
+		return redis.call("ZRevRange", KEYS[1], rank, rank + ARGV[2], 'withscores')
+	`)
+
+	zRevRangeByMemberScript = redis.NewScript(`
+		local rank = redis.call("ZRevRank", KEYS[1], ARGV[1])
+		if not rank then
+			return
+		else
+			rank = rank + 1
+		end
+		return redis.call("ZRevRange", KEYS[1], rank, rank + ARGV[2])
+	`)
+
+	zRevRangeByMemberWithScoresScript = redis.NewScript(`
+		local rank = redis.call("ZRevRank", KEYS[1], ARGV[1])
+		if not rank then
+			return
 		else
 			rank = rank + 1
 		end
@@ -45,7 +65,36 @@ func (xr *XRedis) ZAddEX(ctx context.Context, key string, zs []*redis.Z, ttl tim
 	return err
 }
 
-func (xr *XRedis) ZRevRangeByMember(ctx context.Context, key string, member interface{}, offset int64) ([]int64, error) {
+func (xr *XRedis) ZRevPageByMember(ctx context.Context, key string, member interface{}, offset int64) ([]interface{}, error) {
+	res, err := zRevPageByMemberScript.Run(ctx, xr, []string{key}, member, offset).Result()
+	if err != nil {
+		return nil, err
+	}
+	val, ok := res.([]interface{})
+	if !ok || len(val) == 0 {
+		return nil, redis.Nil
+	}
+	return val, nil
+}
+
+func (xr *XRedis) ZRevPageByMemberWithScores(ctx context.Context, key string, member interface{}, offset int64) ([]redis.Z, error) {
+	res, err := zRevPageByMemberWithScoresScript.Run(ctx, xr, []string{key}, member, offset).Result()
+	if err != nil {
+		return nil, err
+	}
+	val, ok := res.([]interface{})
+	if !ok || len(val) == 0 || len(val)&1 != 0 {
+		return nil, redis.Nil
+	}
+	zs := make([]redis.Z, 0, len(val)>>1)
+	for i := 0; i < len(val); i += 2 {
+		id := val[i+1].(string)
+		zs = append(zs, redis.Z{Member: val[i], Score: float64(cast.ParseInt(id, 0))})
+	}
+	return zs, nil
+}
+
+func (xr *XRedis) ZRevRangeByMember(ctx context.Context, key string, member interface{}, offset int64) ([]interface{}, error) {
 	res, err := zRevRangeByMemberScript.Run(ctx, xr, []string{key}, member, offset).Result()
 	if err != nil {
 		return nil, err
@@ -54,12 +103,7 @@ func (xr *XRedis) ZRevRangeByMember(ctx context.Context, key string, member inte
 	if !ok || len(val) == 0 {
 		return nil, redis.Nil
 	}
-	ids := make([]int64, 0, offset)
-	for _, v := range val {
-		id := v.(string)
-		ids = append(ids, cast.ParseInt(id, 0))
-	}
-	return ids, nil
+	return val, nil
 }
 
 func (xr *XRedis) ZRevRangeByMemberWithScores(ctx context.Context, key string, member interface{}, offset int64) ([]redis.Z, error) {
