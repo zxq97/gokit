@@ -23,13 +23,11 @@ func TestNewProducer(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	ticker := time.NewTicker(time.Millisecond * 10)
+	ticker := time.NewTicker(time.Millisecond * 2)
 	done := make(chan struct{})
-	go func() {
-		time.AfterFunc(time.Second*10, func() {
-			close(done)
-		})
-	}()
+	time.AfterFunc(time.Second*2, func() {
+		close(done)
+	})
 	var x int64 = 10000
 	for {
 		select {
@@ -37,7 +35,7 @@ func TestNewProducer(t *testing.T) {
 			msg := &TestMsg{A: "a", B: x}
 			log.Println(x)
 			x++
-			err = p.SendMessage(context.TODO(), "test_tt", "key", mq.TagCreate, msg, 0)
+			err = p.SendMessage(context.TODO(), "test_tt", "cast.FormatInt(x)", mq.TagCreate, msg)
 			if err != nil {
 				t.Error(err)
 			}
@@ -75,4 +73,32 @@ func TestNewConsumer(t *testing.T) {
 		}
 	})
 	log.Println("wait done chan")
+}
+
+func TestNewDispatch(t *testing.T) {
+	conf := &kafka.Config{}
+	err := config.LoadYaml("../../yaml/kafka.yaml", conf)
+	if err != nil {
+		t.Error(err)
+	}
+	log.Println(conf.Addr)
+	fn := func(ctx context.Context, msg *mq.MqMessage) error {
+		km := &TestMsg{}
+		err = proto.Unmarshal(msg.Message, km)
+		if err != nil {
+			t.Error(err)
+		}
+		log.Println(km)
+		<-time.After(time.Second)
+		return nil
+	}
+	cg, err := kafka.NewDispatchConsumer(conf, []string{"test_tt"}, "g", fn, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = cg.Start()
+	<-time.After(time.Second * 5)
+	if err = cg.Stop(); err != nil {
+		t.Fatal(err)
+	}
 }
